@@ -5,6 +5,10 @@ You get video files, subtitles, and a description of each lesson as a html-docum
 
 ![Treehouse-saver](http://i.imgur.com/dmfmRS8.png?1 "Treehouse-saver")
 
+Example of the description to the video:
+
+![Treehouse-saver](http://i.imgur.com/ca2i6wY.png?1 "Treehouse-saver")
+
 ## Requirements
 
 1. [teamtreehouse.com](http://teamtreehouse.com//) PRO account (full or trial)
