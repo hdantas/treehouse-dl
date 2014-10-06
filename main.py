@@ -75,14 +75,14 @@ def get_themes(category_name):
     category_page = sess.get(category_url)
     category_page = bs(category_page.text)
 
-    themes = category_page.select('a.title')
+    themes = category_page.select('li.card')
 
     themes_items = [
         {
             "theme_name": theme.find('h3').text,
             "theme_type": theme.find('strong').text.strip(),
-            "theme_level": theme.find('p').text.strip(),
-            "theme_url": BASE_URL + theme['href']
+            "theme_level": theme.select('.difficulty')[0].text.strip(),
+            "theme_url": BASE_URL + theme.select('a.title')[0]['href']
         }
         for theme in themes]
 
