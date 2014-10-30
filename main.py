@@ -81,7 +81,7 @@ def get_themes(category_name):
         {
             "theme_name": theme.find('h3').text,
             "theme_type": theme.find('strong').text.strip(),
-            "theme_level": theme.select('.difficulty')[0].text.strip(),
+            "theme_level": theme.select('.difficulty')[0].text.strip() if theme.select('.difficulty') else '' ,
             "theme_url": BASE_URL + theme.select('a.title')[0]['href']
         }
         for theme in themes]
