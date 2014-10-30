@@ -23,6 +23,6 @@ Example of the description to the video:
 Put into `config.json` file your username, password and output path ("./Lessons" by default)
 
 ## Run
-`python3 main.py` in script directory.
+`python3 main.py` in script directory (maybe slow, be patient!).
 
 **Note(!): If you liked the proposed content, please apply for a paid subscription.**
