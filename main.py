@@ -147,9 +147,10 @@ def get_video_attach(themes):
 
 
 def parse_video_page(link):
+    print ("Opening link", link)
     video_page = bs(sess.get(link).text)
-    video_meta = video_page.select('.video-meta')[0]
-    download_tab = video_page.select('.downloads-container')[0]
+    video_meta = video_page.select('#video-meta')[0]
+    download_tab = video_page.select('#downloads-tab-content')[0]
     links = download_tab.select('a')
     video_links = {}
     for link in links:
@@ -256,7 +257,7 @@ def hello_dialog():
                                                     '''
 
     category_names = ['HTML', 'CSS', 'Design', 'JavaScript', 'Ruby', 'PHP', 'WordPress', 'iOS', 'Android',
-                      'Development-Tools', 'Business', 'Python']
+                      'Development-Tools', 'Business', 'Python', 'Digital-Literacy', 'Java']
     cat_list = '\n'.join(['[' + str(key + 1) + '] - ' + val for key, val in enumerate(category_names)])
     hello += '\nAvailable categories:\n' + cat_list + '\n\nSpecify the numbers of categories through space (like this 1 3 6)\n'
     print(hello)
