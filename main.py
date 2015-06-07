@@ -2,23 +2,27 @@ import os
 import sys
 import os.path
 
-import bs4
+from bs4 import BeautifulSoup
 import requests
 
 import config
 
 
-def do_auth(user, pwd):
+def do_auth(user, pwd): #login using user and pwd, returns logged in session
     sess = requests.Session()
 
-    login_page = sess.get('http://teamtreehouse.com/signin')
-    login_page_soup = bs(login_page.text)
+    login_page = sess.get('https://teamtreehouse.com/signin')
+    login_page_soup = BeautifulSoup(login_page.text)
+    
     token_val = login_page_soup.find('input', {'name': 'authenticity_token'}).get('value')
     utf_val = login_page_soup.find('input', {'name': 'utf8'}).get('value')
+    
     post_data = {'user_session[email]': user, 'user_session[password]': pwd, 'utf8': utf_val,
                  'authenticity_token': token_val}
+
     profile_page = sess.post('https://teamtreehouse.com/person_session', data=post_data)
-    profile_page_soup = bs(profile_page.text)
+    
+    profile_page_soup = BeautifulSoup(profile_page.text)
     auth_sign = profile_page_soup.title.text
     if auth_sign:
         if auth_sign.lower().find('home') != -1:
@@ -32,29 +36,13 @@ def do_auth(user, pwd):
     return sess
 
 
-def http_get(url):
+def http_get(url): #returns text of url
     resp = sess.get(url)
     return resp.text
 
-
-def mkdir(path, kind):
-    try:
-        path = BASE_DIR + path
-        os.makedirs(path)
-        print(get_msg('win', path, kind))
-    except FileExistsError:
-        print(get_msg('exist', path, kind))
-    except Exception:
-        raise Exception(print(get_msg('fail', path, kind)))
-
-
-def get_msg(msg, path, kind):
+def get_msg(msg, path, kind): #returns success/error message based on the 'kind' variable
     kind = kind.lower()
-    message = {
-        'win': '{2}[!] {1} Folder {0} create!',
-        'fail': '[FAIL!] {1} Folder {0} NOT create!',
-        'exist': '[!!] {1} Folder {0} exist!',
-        'file': '{2}[!] File {0} create!'}
+    message = config.message
     indent = ''
     if kind == 'category':
         indent = ''
@@ -71,9 +59,10 @@ def get_msg(msg, path, kind):
 
 
 def get_themes(category_name):
+# returns array of dictionaries including all courses from category 'category name'
     category_url = 'http://teamtreehouse.com/library/topic:' + category_name.lower()
     category_page = sess.get(category_url)
-    category_page = bs(category_page.text)
+    category_page = BeautifulSoup(category_page.text)
 
     themes = category_page.select('li.card')
 
@@ -88,26 +77,28 @@ def get_themes(category_name):
 
     for key, theme in enumerate(themes_items):
         url = theme['theme_url']
-        desc = bs(http_get(url)).find('div', 'hero-meta')
-        themes_items[key]['theme_desc'] = desc
+        description = BeautifulSoup(http_get(url)).find('div', 'hero-meta')
+        themes_items[key]['theme_description'] = description
 
     return themes_items
 
 
 def get_themes_parts(themes):
+    # for each theme adds an array with links to all individual sections it contains
+    # returns modified 'themes' array of dictionaries
     for key, theme in enumerate(themes):
         url = theme['theme_url']
-        parts = bs(http_get(url)).find_all('div', {'class': 'contained featurette',
+        parts = BeautifulSoup(http_get(url)).find_all('div', {'class': 'contained featurette',
                                                    'data-featurette': 'expandable-content-card'})
         themes[key]['theme_parts'] = parts
     return themes
 
 
 def get_parts_steps(themes):
+    # for each theme adds an array with links to all steps/videos it contains
+    # returns modified 'themes' array of dictionaries
     for theme in themes:
         parts = theme['theme_parts']
-        if theme['theme_name'] == 'HTML Tables':
-            pass
         theme['theme_parts'] = []
         part_count = 1
         for part in parts:
@@ -136,19 +127,22 @@ def get_parts_steps(themes):
 
 
 def get_video_attach(themes):
+# add 'video_attach' key to the themes courses
+# the key includes the urls (based on the parse_video_page function) for each step
+
     for theme in themes:
         for part in theme['theme_parts']:
             for video in part['step_videos']:
                 link = video['link']
                 video_links = parse_video_page(link)
                 video['video_attach'] = video_links
-                pass
     return themes
 
 
 def parse_video_page(link):
+# returns dictionary including links to the videos based on the 'link'
     print ("Opening link", link)
-    video_page = bs(sess.get(link).text)
+    video_page = BeautifulSoup(sess.get(link).text)
     video_meta = video_page.select('#video-meta')[0]
     download_tab = video_page.select('#downloads-tab-content')[0]
     links = download_tab.select('a')
@@ -169,11 +163,14 @@ def parse_video_page(link):
 
 
 def download(themes):
+# downloads the videos for each theme in themes
+# uses auxiliary functions to create the directory structure
+# and to download the actual files based on the URLs
     for theme in themes:
         category = os.path.join(BASE_DIR, category_name)
         theme_path = os.path.join(category, theme['theme_name'] + '_' + str(theme['theme_type']) + ' (level: ' + str(
             theme['theme_level']) + ')')
-        make_file(theme['theme_desc'], theme_path, 'ThemeDescription.html')
+        make_file(theme['theme_description'], theme_path, 'ThemeDescription.html')
         if str(theme['theme_type']) == 'Workshop':
             video_item = parse_video_page(theme['theme_url'])
             filepath = theme_path
@@ -193,6 +190,8 @@ def download(themes):
 
 
 def _download_file(url, path, name):
+# Create and fill file based on the URL, overwrites existing file
+# If the file does not exist it will create it as well as the path to reach it
     while True:
         try:
             r = sess.get(url, stream=True)
@@ -213,6 +212,7 @@ def _download_file(url, path, name):
 
 
 def _download_attach(video_item, filepath, filename):
+# Downloads files based on the extension, uses _download_file function to retrieve the file
     video_path = os.path.join(filepath, filename)
     for key in video_item.keys():
         if key is 'meta':
@@ -231,6 +231,7 @@ def _download_attach(video_item, filepath, filename):
 
 
 def make_file(data, path, name):
+# Creates an HTML file for each video item
     if not os.path.exists(path):
         os.makedirs(path)
     with open(os.path.join(path, name), 'w') as file:
@@ -244,6 +245,8 @@ def make_file(data, path, name):
 
 
 def hello_dialog():
+# Prints the initial dialog, lists all categories the user can choose to download
+# Returns array with chosen categories
     hello = '''
       _____              _   _
      |_   _| __ ___  ___| | | | ___  _   _ ___  ___
@@ -261,7 +264,7 @@ def hello_dialog():
     cat_list = '\n'.join(['[' + str(key + 1) + '] - ' + val for key, val in enumerate(category_names)])
     hello += '\nAvailable categories:\n' + cat_list + '\n\nSpecify the numbers of categories through space (like this 1 3 6)\n'
     print(hello)
-    # resp = sess.get('http://teamtreehouse.com/library')
+
     while True:
         select_cats = input('Enter numbers:')
         try:
@@ -270,7 +273,7 @@ def hello_dialog():
             continue
         cat_len = len(category_names)
         if len(select_cats) <= cat_len and max(select_cats) <= cat_len: break
-    print('[!] You choose: ' + ','.join([category_names[i - 1] for i in select_cats]))
+    print('[!] You chose: ' + ','.join([category_names[i - 1] for i in select_cats]))
 
     return [category_names[i - 1] for i in select_cats]
 
@@ -282,7 +285,6 @@ if __name__ == '__main__':
     BASE_DIR = config.get('path')
     BASE_URL = config.get('base_url')
 
-    bs = bs4.BeautifulSoup
 
     sess = do_auth(_user, _pass)
     category_names = hello_dialog()
